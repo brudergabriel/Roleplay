@@ -47,7 +47,7 @@ Não entende termos técnicos (setup, dashboard, interface).
 Responda de forma curta e direta, como se fosse no WhatsApp."""
 
 # Alteração para o modelo 'gemini-pro', que é mais compatível com a v1beta atual
-model = genai.GenerativeModel(model_name='gemini-pro')
+model = genai.GenerativeModel(model_name='gemini-1.5-flash')
 
 # 3. Gestão do Histórico
 if "messages" not in st.session_state:
