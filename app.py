@@ -35,33 +35,23 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-with st.expander("ℹ️ INSTRUÇÕES DO TESTE (Para o Analista)", expanded=False):
-    st.markdown("""
-    **Cenário:** O Seu Arnaldo é um cliente VSB que não entende de tecnologia.
-    **Sua Missão:** 1. Explique como configurar **Adicionais** (Bacon Extra).
-    2. Explique como configurar **Pizza Meio a Meio** (Preço da mais cara).
-    **Regra:** Não use termos técnicos em inglês. Seja simples e paciente.
-    """)
-
 # 2. Inicialização da API
 try:
     genai.configure(api_key=st.secrets["MINHA_CHAVE"])
 except Exception as e:
-    st.error("Erro nos Secrets: Verifique se 'MINHA_CHAVE' está configurada.")
+    st.error("Erro nos Secrets: Verifique a chave MINHA_CHAVE.")
 
-SYSTEM_PROMPT = """
-Aja como o 'Seu Arnaldo', dono de uma hamburgueria de bairro. Você é simples, pouco tecnológico e está com pressa. 
-Não entende palavras como setup, dashboard, interface ou UI. Se usarem, reclame. 
-Você quer saber sobre adicionais e pizza de dois sabores. Responda de forma curta, como no WhatsApp.
-"""
+SYSTEM_PROMPT = """Aja como o 'Seu Arnaldo', dono de uma hamburgueria de bairro. 
+Você é simples, pouco tecnológico e está com pressa. 
+Não entende termos técnicos (setup, dashboard, interface). 
+Responda de forma curta e direta, como se fosse no WhatsApp."""
 
-# Usando o modelo que costuma ser mais estável
-model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
+# Alteração para o modelo 'gemini-pro', que é mais compatível com a v1beta atual
+model = genai.GenerativeModel(model_name='gemini-pro')
 
 # 3. Gestão do Histórico
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # Usando aspas triplas para evitar o erro de SyntaxError/Unterminated String
     msg_inicial = """Oi, boa tarde! Moço(a), eu estou aqui tentando mexer nesse cardápio novo que eu assinei, mas olha... tá difícil. Eu já coloquei o X-Salada, mas não acho onde que eu coloco pro cliente escolher se quer tirar a cebola ou se quer pagar mais 5 reais pra vir com bacon dobrado. E a pizza de dois sabores? Como faz? Me ajuda aí que o movimento já vai começar!"""
     st.session_state.messages.append({"role": "assistant", "content": msg_inicial})
 
@@ -77,14 +67,15 @@ if prompt := st.chat_input("Responda ao Seu Arnaldo..."):
         st.markdown(prompt)
 
     try:
-        # Formata o histórico para o padrão que a API exige (user/model)
-        api_history = []
+        # Criando o prompt contextulizado para o modelo
+        contexto_completo = f"Instrução de Personagem: {SYSTEM_PROMPT}\n\n"
         for m in st.session_state.messages:
-            api_role = "user" if m["role"] == "user" else "model"
-            api_history.append({"role": api_role, "parts": [m["content"]]})
+            prefixo = "Cliente (Seu Arnaldo):" if m["role"] == "assistant" else "Analista:"
+            contexto_completo += f"{prefixo} {m['content']}\n"
         
-        # Gera a resposta
-        response = model.generate_content(api_history)
+        contexto_completo += "\nSeu Arnaldo responda ao analista:"
+
+        response = model.generate_content(contexto_completo)
         
         if response.text:
             st.session_state.messages.append({"role": "assistant", "content": response.text})
