@@ -7,7 +7,7 @@ st.title("🍔 Teste Prático: Atendimento Goomer")
 st.info("Cenário: Você está atendendo o Seu Arnaldo (Arnaldo Burgers). Resolva as dúvidas dele usando a Central de Ajuda.")
 
 # Configurar a API (Substitua pela sua chave ou use Secrets do Streamlit)
-genai.configure(api_key="SUA_CHAVE_API_AQUI")
+genai.configure(api_key=st.secrets["AIzaSyD_t4b0g2j8vONUIsnf-Zaqj0_h21g4loo"])
 
 # Instruções secretas da Persona
 SYSTEM_PROMPT = """
