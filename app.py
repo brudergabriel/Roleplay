@@ -1,7 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. Configuração Visual Estilizada
+# 1. Configuração Visual
 st.set_page_config(page_title="Suporte Seu Arnaldo", layout="centered")
 
 st.markdown("""
@@ -47,19 +47,48 @@ with st.expander("ℹ️ INSTRUÇÕES DO TESTE (Para o Analista)", expanded=Fals
 try:
     genai.configure(api_key=st.secrets["MINHA_CHAVE"])
 except Exception as e:
-    st.error("Erro nos Secrets: Verifique se 'MINHA_CHAVE' está configurada no Streamlit Cloud.")
+    st.error("Erro nos Secrets: Verifique se 'MINHA_CHAVE' está configurada.")
 
-# Configuração do Modelo
-SYSTEM_PROMPT = (
-    "Aja como o 'Seu Arnaldo', dono de uma hamburgueria de bairro. Você é simples, pouco tecnológico e está com pressa. "
-    "Não entende palavras como setup, dashboard, interface ou UI. Se usarem, reclame. "
-    "Você quer saber sobre adicionais e pizza de dois sabores. Responda de forma curta, como no WhatsApp."
-)
+SYSTEM_PROMPT = """
+Aja como o 'Seu Arnaldo', dono de uma hamburgueria de bairro. Você é simples, pouco tecnológico e está com pressa. 
+Não entende palavras como setup, dashboard, interface ou UI. Se usarem, reclame. 
+Você quer saber sobre adicionais e pizza de dois sabores. Responda de forma curta, como no WhatsApp.
+"""
 
+# Usando o modelo que costuma ser mais estável
 model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
 
 # 3. Gestão do Histórico
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # Mensagem Inicial
-    msg_inicial = "Oi, boa tarde! Moço(a), eu estou aqui tentando mexer nesse cardápio novo, mas olha...
+    # Usando aspas triplas para evitar o erro de SyntaxError/Unterminated String
+    msg_inicial = """Oi, boa tarde! Moço(a), eu estou aqui tentando mexer nesse cardápio novo que eu assinei, mas olha... tá difícil. Eu já coloquei o X-Salada, mas não acho onde que eu coloco pro cliente escolher se quer tirar a cebola ou se quer pagar mais 5 reais pra vir com bacon dobrado. E a pizza de dois sabores? Como faz? Me ajuda aí que o movimento já vai começar!"""
+    st.session_state.messages.append({"role": "assistant", "content": msg_inicial})
+
+# Exibir mensagens
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 4. Lógica de Resposta
+if prompt := st.chat_input("Responda ao Seu Arnaldo..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    try:
+        # Formata o histórico para o padrão que a API exige (user/model)
+        api_history = []
+        for m in st.session_state.messages:
+            api_role = "user" if m["role"] == "user" else "model"
+            api_history.append({"role": api_role, "parts": [m["content"]]})
+        
+        # Gera a resposta
+        response = model.generate_content(api_history)
+        
+        if response.text:
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            with st.chat_message("assistant"):
+                st.markdown(response.text)
+    except Exception as e:
+        st.error(f"Erro na resposta: {e}")
