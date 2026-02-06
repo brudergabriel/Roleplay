@@ -102,3 +102,19 @@ if prompt := st.chat_input("Responda ao Seu Arnaldo..."):
 
     except Exception as e:
         st.error(f"Erro na resposta: {e}")
+
+import json
+from datetime import datetime
+
+if st.button("Finalizar avaliação"):
+
+    nome_candidato = st.text_input("Nome do candidato:")
+
+    if nome_candidato:
+        data = datetime.now().strftime("%Y-%m-%d_%H-%M")
+
+        with open(f"{nome_candidato}_{data}.json", "w", encoding="utf-8") as f:
+            json.dump(st.session_state.messages, f, ensure_ascii=False, indent=4)
+
+        st.success("Conversa salva com sucesso!")
+
