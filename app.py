@@ -1,13 +1,12 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. Configuração Visual (Estilo AI Studio)
+# 1. Configuração Visual Estilizada
 st.set_page_config(page_title="Suporte Seu Arnaldo", layout="centered")
 
 st.markdown("""
     <style>
     .main { background-color: #fdf5e6; }
-    .stChatInputContainer { padding-bottom: 20px; }
     .header-container {
         background-color: #b30000;
         padding: 20px;
@@ -24,65 +23,43 @@ st.markdown("""
         border: 1px solid #ffeeba;
         margin-bottom: 20px;
         font-weight: bold;
+        text-align: center;
     }
     </style>
     <div class="header-container">
         <h1>🍔 ARNALDO BURGERS</h1>
-        <p>HAMBURGUERIA & PIZZARIA</p>
+        <p>SISTEMA DE ATENDIMENTO AO PARCEIRO</p>
     </div>
     <div class="status-bar">
-        ⏳ ABERTURA EM: 29:53 | Status do Arnaldo: Desesperado
+        ⏳ ABERTURA DA LOJA EM: 28:15 | Status: Seu Arnaldo está Ansioso
     </div>
 """, unsafe_allow_html=True)
 
-with st.expander("ℹ️ Objetivo da Chamada (Apenas para o Analista)", expanded=True):
+with st.expander("ℹ️ INSTRUÇÕES DO TESTE (Para o Analista)", expanded=False):
     st.markdown("""
-    * Explicar como adicionar **'Bacon Extra'** (Adicionais/Complementos).
-    * Explicar como configurar **Pizza Meio a Meio** (Preço da mais cara).
-    * **Aviso:** Evite termos técnicos ou inglês. Seu Arnaldo não gosta!
+    **Cenário:** O Seu Arnaldo é um cliente VSB que não entende de tecnologia.
+    **Sua Missão:** 1. Explique como configurar **Adicionais** (Bacon Extra).
+    2. Explique como configurar **Pizza Meio a Meio** (Preço da mais cara).
+    **Regra:** Não use termos técnicos em inglês. Seja simples e paciente.
     """)
 
-# 2. Configuração da API
+# 2. Inicialização da API
 try:
     genai.configure(api_key=st.secrets["MINHA_CHAVE"])
-except:
-    st.error("Erro na Chave de API. Verifique os Secrets.")
+except Exception as e:
+    st.error("Erro nos Secrets: Verifique se 'MINHA_CHAVE' está configurada no Streamlit Cloud.")
 
-SYSTEM_PROMPT = """
-Aja como o 'Seu Arnaldo', dono da 'Arnaldo Burgers'. Você é pouco tecnológico e está ansioso.
-Não aceite termos como 'setup', 'dashboard', 'interface'.
-Objetivos: Adicionais no X-Salada e Pizza Meio a Meio.
-Responda de forma curta e direta, como alguém que está no meio da cozinha.
-"""
+# Configuração do Modelo
+SYSTEM_PROMPT = (
+    "Aja como o 'Seu Arnaldo', dono de uma hamburgueria de bairro. Você é simples, pouco tecnológico e está com pressa. "
+    "Não entende palavras como setup, dashboard, interface ou UI. Se usarem, reclame. "
+    "Você quer saber sobre adicionais e pizza de dois sabores. Responda de forma curta, como no WhatsApp."
+)
 
-# Usando o modelo estável para evitar o erro NotFound
-model = genai.GenerativeModel(model_name='models/gemini-1.5-flash-latest', system_instruction=SYSTEM_PROMPT)
+model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
 
-# 3. Lógica do Chat
-if "chat" not in st.session_state:
-    st.session_state.chat = model.start_chat(history=[])
+# 3. Gestão do Histórico
+if "messages" not in st.session_state:
     st.session_state.messages = []
-    
-    # Mensagem inicial manual para garantir que apareça com o estilo certo
-    msg_inicial = "Oi, boa tarde! Moço(a), eu estou aqui tentando mexer nesse cardápio novo, mas olha... tá difícil. Eu já coloquei o X-Salada, mas não acho onde que eu coloco pro cliente escolher se quer tirar a cebola ou se quer pagar mais 5 reais pra vir com bacon dobrado. E a pizza de dois sabores? Como faz? Me ajuda aí que o movimento já vai começar!"
-    st.session_state.messages.append({"role": "assistant", "content": msg_inicial})
-
-# Exibir histórico
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# Input do usuário
-if prompt := st.chat_input("Explique para o Seu Arnaldo..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    try:
-        # Envia a mensagem e recebe a resposta do modelo
-        response = st.session_state.chat.send_message(prompt)
-        st.session_state.messages.append({"role": "assistant", "content": response.text})
-        with st.chat_message("assistant"):
-            st.markdown(response.text)
-    except Exception as e:
-        st.error(f"Ocorreu um erro: {e}")
+    # Mensagem Inicial
+    msg_inicial = "Oi, boa tarde! Moço(a), eu estou aqui tentando mexer nesse cardápio novo, mas olha...
