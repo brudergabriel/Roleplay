@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
 # 1. Configuração Visual
 st.set_page_config(page_title="Suporte Seu Arnaldo", layout="centered")
