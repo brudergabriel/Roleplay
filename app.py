@@ -56,7 +56,7 @@ Responda de forma curta e direta, como alguém que está no meio da cozinha.
 """
 
 # Usando o modelo estável para evitar o erro NotFound
-model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
+model = genai.GenerativeModel(model_name='models/gemini-1.5-flash-latest', system_instruction=SYSTEM_PROMPT)
 
 # 3. Lógica do Chat
 if "chat" not in st.session_state:
