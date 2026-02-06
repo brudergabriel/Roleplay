@@ -1,7 +1,9 @@
 import streamlit as st
 from google import genai
 
+# =========================
 # 1. Configuração Visual
+# =========================
 st.set_page_config(page_title="Suporte Seu Arnaldo", layout="centered")
 
 st.markdown("""
@@ -35,51 +37,69 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# =========================
 # 2. Inicialização da API
+# =========================
 try:
-    genai.configure(api_key=st.secrets["MINHA_CHAVE"])
+    client = genai.Client(api_key=st.secrets["MINHA_CHAVE"])
 except Exception as e:
-    st.error("Erro nos Secrets: Verifique a chave MINHA_CHAVE.")
+    st.error("Erro ao configurar API. Verifique a chave nos Secrets.")
+    st.stop()
 
-SYSTEM_PROMPT = """Aja como o 'Seu Arnaldo', dono de uma hamburgueria de bairro. 
-Você é simples, pouco tecnológico e está com pressa. 
-Não entende termos técnicos (setup, dashboard, interface). 
-Responda de forma curta e direta, como se fosse no WhatsApp."""
+SYSTEM_PROMPT = """
+Aja como o 'Seu Arnaldo', dono de uma hamburgueria de bairro.
+Você é simples, pouco tecnológico e está com pressa.
+Não entende termos técnicos (setup, dashboard, interface).
+Responda de forma curta, direta e informal, como se fosse no WhatsApp.
+"""
 
-# Alteração para o modelo 'gemini-pro', que é mais compatível com a v1beta atual
-model = genai.GenerativeModel(model_name='models/gemini-1.5-flash')
-
+# =========================
 # 3. Gestão do Histórico
+# =========================
 if "messages" not in st.session_state:
     st.session_state.messages = []
     msg_inicial = """Oi, boa tarde! Moço(a), eu estou aqui tentando mexer nesse cardápio novo que eu assinei, mas olha... tá difícil. Eu já coloquei o X-Salada, mas não acho onde que eu coloco pro cliente escolher se quer tirar a cebola ou se quer pagar mais 5 reais pra vir com bacon dobrado. E a pizza de dois sabores? Como faz? Me ajuda aí que o movimento já vai começar!"""
     st.session_state.messages.append({"role": "assistant", "content": msg_inicial})
 
-# Exibir mensagens
+# Exibir mensagens anteriores
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+# =========================
 # 4. Lógica de Resposta
+# =========================
 if prompt := st.chat_input("Responda ao Seu Arnaldo..."):
+    
+    # Mostra mensagem do usuário
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     try:
-        # Criando o prompt contextulizado para o modelo
-        contexto_completo = f"Instrução de Personagem: {SYSTEM_PROMPT}\n\n"
-        for m in st.session_state.messages:
-            prefixo = "Cliente (Seu Arnaldo):" if m["role"] == "assistant" else "Analista:"
-            contexto_completo += f"{prefixo} {m['content']}\n"
-        
-        contexto_completo += "\nSeu Arnaldo responda ao analista:"
+        # Monta contexto completo
+        contexto_completo = f"Instrução de Personagem:\n{SYSTEM_PROMPT}\n\n"
 
-        response = model.generate_content(contexto_completo)
-        
-        if response.text:
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        for m in st.session_state.messages:
+            if m["role"] == "assistant":
+                contexto_completo += f"Seu Arnaldo: {m['content']}\n"
+            else:
+                contexto_completo += f"Analista: {m['content']}\n"
+
+        contexto_completo += "\nSeu Arnaldo responda ao analista:\n"
+
+        # Chamada para Gemini
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=contexto_completo,
+        )
+
+        resposta_texto = response.text
+
+        if resposta_texto:
+            st.session_state.messages.append({"role": "assistant", "content": resposta_texto})
             with st.chat_message("assistant"):
-                st.markdown(response.text)
+                st.markdown(resposta_texto)
+
     except Exception as e:
         st.error(f"Erro na resposta: {e}")
