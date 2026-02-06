@@ -1,47 +1,88 @@
 import streamlit as st
 import google.generativeai as genai
 
-# Configuração da Página
-st.set_page_config(page_title="Simulador de Atendimento - Goomer", layout="centered")
-st.title("🍔 Teste Prático: Atendimento Goomer")
-st.info("Cenário: Você está atendendo o Seu Arnaldo (Arnaldo Burgers). Resolva as dúvidas dele usando a Central de Ajuda.")
+# 1. Configuração Visual (Estilo AI Studio)
+st.set_page_config(page_title="Suporte Seu Arnaldo", layout="centered")
 
-# Configurar a API (Substitua pela sua chave ou use Secrets do Streamlit)
-genai.configure(api_key=st.secrets["MINHA_CHAVE"])
+st.markdown("""
+    <style>
+    .main { background-color: #fdf5e6; }
+    .stChatInputContainer { padding-bottom: 20px; }
+    .header-container {
+        background-color: #b30000;
+        padding: 20px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .status-bar {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ffeeba;
+        margin-bottom: 20px;
+        font-weight: bold;
+    }
+    </style>
+    <div class="header-container">
+        <h1>🍔 ARNALDO BURGERS</h1>
+        <p>HAMBURGUERIA & PIZZARIA</p>
+    </div>
+    <div class="status-bar">
+        ⏳ ABERTURA EM: 29:53 | Status do Arnaldo: Desesperado
+    </div>
+""", unsafe_allow_html=True)
 
-# Instruções secretas da Persona
+with st.expander("ℹ️ Objetivo da Chamada (Apenas para o Analista)", expanded=True):
+    st.markdown("""
+    * Explicar como adicionar **'Bacon Extra'** (Adicionais/Complementos).
+    * Explicar como configurar **Pizza Meio a Meio** (Preço da mais cara).
+    * **Aviso:** Evite termos técnicos ou inglês. Seu Arnaldo não gosta!
+    """)
+
+# 2. Configuração da API
+try:
+    genai.configure(api_key=st.secrets["MINHA_CHAVE"])
+except:
+    st.error("Erro na Chave de API. Verifique os Secrets.")
+
 SYSTEM_PROMPT = """
-Você é o "Seu Arnaldo", dono da "Arnaldo Burgers". Você é um pequeno empresário, pouco tecnológico e está com pressa.
-Você não entende termos técnicos (setup, UI, dashboard). Se o analista usar esses termos, reclame.
-Dúvidas: 1. Adicionais no X-Salada (bacon extra). 2. Pizza meio a meio (cobrar a mais cara).
-Seja educado, mas ansioso. Só dê o atendimento como concluído se o analista explicar o passo a passo de forma simples.
-Primeira mensagem: "Oi, boa tarde! Moço(a), eu estou aqui tentando mexer nesse cardápio novo, mas olha... tá difícil. Eu já coloquei o X-Salada, mas não acho onde que eu coloco pro cliente escolher se quer tirar a cebola ou se quer pagar mais 5 reais pra vir com bacon dobrado. E a pizza de dois sabores? Como faz? Me ajuda aí que o movimento já vai começar!"
+Aja como o 'Seu Arnaldo', dono da 'Arnaldo Burgers'. Você é pouco tecnológico e está ansioso.
+Não aceite termos como 'setup', 'dashboard', 'interface'.
+Objetivos: Adicionais no X-Salada e Pizza Meio a Meio.
+Responda de forma curta e direta, como alguém que está no meio da cozinha.
 """
 
-# Inicializar o modelo
-model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
+# Usando o modelo estável para evitar o erro NotFound
+model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
 
-# Histórico do Chat
-if "messages" not in st.session_state:
+# 3. Lógica do Chat
+if "chat" not in st.session_state:
+    st.session_state.chat = model.start_chat(history=[])
     st.session_state.messages = []
-    # Mensagem inicial do Seu Arnaldo
-    initial_msg = "Oi, boa tarde! Moço(a), eu estou aqui tentando mexer nesse cardápio novo, mas olha... tá difícil. Eu já coloquei o X-Salada, mas não acho onde que eu coloco pro cliente escolher se quer tirar a cebola ou se quer pagar mais 5 reais pra vir com bacon dobrado. E a pizza de dois sabores? Como faz? Me ajuda aí que o movimento já vai começar!"
-    st.session_state.messages.append({"role": "assistant", "content": initial_msg})
+    
+    # Mensagem inicial manual para garantir que apareça com o estilo certo
+    msg_inicial = "Oi, boa tarde! Moço(a), eu estou aqui tentando mexer nesse cardápio novo, mas olha... tá difícil. Eu já coloquei o X-Salada, mas não acho onde que eu coloco pro cliente escolher se quer tirar a cebola ou se quer pagar mais 5 reais pra vir com bacon dobrado. E a pizza de dois sabores? Como faz? Me ajuda aí que o movimento já vai começar!"
+    st.session_state.messages.append({"role": "assistant", "content": msg_inicial})
 
-# Exibir mensagens
+# Exibir histórico
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Entrada do Analista
-if prompt := st.chat_input("Digite sua resposta aqui..."):
+# Input do usuário
+if prompt := st.chat_input("Explique para o Seu Arnaldo..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Resposta do Seu Arnaldo
-    with st.chat_message("assistant"):
-        full_history = [{"role": m["role"], "parts": [m["content"]]} for m in st.session_state.messages]
-        response = model.generate_content(full_history)
-        st.markdown(response.text)
+    try:
+        # Envia a mensagem e recebe a resposta do modelo
+        response = st.session_state.chat.send_message(prompt)
         st.session_state.messages.append({"role": "assistant", "content": response.text})
+        with st.chat_message("assistant"):
+            st.markdown(response.text)
+    except Exception as e:
+        st.error(f"Ocorreu um erro: {e}")
